@@ -7,7 +7,7 @@ maintainer:    libraries@haskell.org
 bug-reports:   https://github.com/haskell/process/issues
 synopsis:      Process libraries
 category:      System
-build-type:    Configure
+build-type:    Simple
 cabal-version: >=1.10
 description:
     This package contains libraries for dealing with system processes.
@@ -19,20 +19,9 @@ description:
     <https://haskell-lang.org/library/typed-process>.
 
 extra-source-files:
-    aclocal.m4
     changelog.md
-    configure
-    configure.ac
-    include/HsProcessConfig.h.in
-    process.buildinfo
     exes/echo.bat
     exes/subdir/echo.bat
-
-extra-tmp-files:
-    autom4te.cache
-    config.log
-    config.status
-    include/HsProcessConfig.h
 
 source-repository head
     type:     git
@@ -54,23 +43,6 @@ library
         System.Process
         System.Process.Internals
     other-modules: System.Process.Common
-    if os(windows)
-        other-modules: System.Process.Windows
-        build-depends: Win32 >=2.2 && < 2.7
-        extra-libraries: kernel32
-        cpp-options: -DWINDOWS
-    else
-        other-modules: System.Process.Posix
-        build-depends: unix >= 2.5 && < 2.8
-
-    c-sources:
-        cbits/runProcess.c
-    include-dirs: include
-    includes:
-        runProcess.h
-    install-includes:
-        runProcess.h
-        processFlags.h
 
     ghc-options: -Wall
 
