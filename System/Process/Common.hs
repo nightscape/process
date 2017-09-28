@@ -1,5 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE MagicHash #-}
+
+
 module System.Process.Common
     ( CreateProcess (..)
     , CmdSpec (..)
@@ -19,15 +22,10 @@ module System.Process.Common
     , mbFd
     , mbPipe
     , pfdToHandle
-
--- Avoid a warning on Windows
-#ifdef WINDOWS
-    , CGid (..)
-#else
     , CGid
-#endif
     ) where
 
+import Java
 import Control.Concurrent
 import Control.Exception
 import Data.String
@@ -35,6 +33,7 @@ import Foreign.Ptr
 import Foreign.Storable
 
 import System.Posix.Internals
+import System.Posix.Types ( Channel )
 import GHC.IO.Exception
 import GHC.IO.Encoding
 import qualified GHC.IO.FD as FD
@@ -46,26 +45,10 @@ import System.IO.Error
 import Data.Typeable
 import GHC.IO.IOMode
 
--- We do a minimal amount of CPP here to provide uniform data types across
--- Windows and POSIX.
-#ifdef WINDOWS
-import Data.Word (Word32)
-import System.Win32.DebugApi (PHANDLE)
-#else
-import System.Posix.Types
-#endif
+data {-# CLASS "java.lang.Process" #-} JProcess = JProcess (Object# JProcess)
+  deriving Class
 
-#ifdef WINDOWS
--- Define some missing types for Windows compatibility. Note that these values
--- will never actually be used, as the setuid/setgid system calls are not
--- applicable on Windows. No value of this type will ever exist.
-newtype CGid = CGid Word32
-  deriving (Show, Eq)
-type GroupID = CGid
-type UserID = CGid
-#else
-type PHANDLE = CPid
-#endif
+type PHANDLE = JProcess
 
 data CreateProcess = CreateProcess{
   cmdspec      :: CmdSpec,                 -- ^ Executable & arguments, or shell command.  If 'cwd' is 'Nothing', relative paths are resolved with respect to the current working directory.  If 'cwd' is provided, it is implementation-dependent whether relative paths are resolved with respect to 'cwd' or the current working directory, so absolute paths should be used to ensure portability.
@@ -90,16 +73,6 @@ data CreateProcess = CreateProcess{
                                            --
                                            --   @since 1.3.0.0
   new_session :: Bool,                     -- ^ Use posix setsid to start the new process in a new session; does nothing on other platforms.
-                                           --
-                                           --   @since 1.3.0.0
-  child_group :: Maybe GroupID,            -- ^ Use posix setgid to set child process's group id; does nothing on other platforms.
-                                           --
-                                           --   Default: @Nothing@
-                                           --
-                                           --   @since 1.4.0.0
-  child_user :: Maybe UserID,              -- ^ Use posix setuid to set child process's user id; does nothing on other platforms.
-                                           --
-                                           --   Default: @Nothing@
                                            --
                                            --   @since 1.4.0.0
   use_process_jobs :: Bool                 -- ^ On Windows systems this flag indicates that we should wait for the entire process tree
@@ -218,7 +191,8 @@ mbFd fun _std (UseHandle hdl) =
          -- clear the O_NONBLOCK flag on this FD, if it is set, since
          -- we're exposing it externally (see #3316)
          fd' <- FD.setNonBlockingMode fd False
-         return (Handle__{haDevice=fd',..}, FD.fdFD fd')
+         newFd <- FD.mkFD (FD.fdFD fd')  Nothing ReadWriteMode Nothing False
+         return (Handle__{haDevice=fd',..}, newFd)
       Nothing ->
           ioError (mkIOError illegalOperationErrorType
                       "createProcess" (Just hdl) Nothing

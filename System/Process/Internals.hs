@@ -22,11 +22,7 @@
 module System.Process.Internals (
     ProcessHandle(..), ProcessHandle__(..),
     PHANDLE, closePHANDLE, mkProcessHandle,
-#ifdef WINDOWS
-    CGid(..),
-#else
     CGid,
-#endif
     GroupID,
     UserID,
     modifyProcessHandle, withProcessHandle,
@@ -39,14 +35,8 @@ module System.Process.Internals (
     endDelegateControlC,
     stopDelegateControlC,
     unwrapHandles,
-#ifdef WINDOWS
-    terminateJob,
-    waitForJobCompletion,
-    timeout_Infinite,
-#else
     pPrPr_disableITimers, c_execvpe,
     ignoreSignal, defaultSignal,
-#endif
     withFilePathException, withCEnvironment,
     translate,
     createPipe,
@@ -61,12 +51,6 @@ import GHC.IO.Handle.FD (fdToHandle)
 import System.Posix.Internals (FD)
 
 import System.Process.Common
-
-#ifdef WINDOWS
-import System.Process.Windows
-#else
-import System.Process.Posix
-#endif
 
 -- ----------------------------------------------------------------------------
 -- | This function is almost identical to
